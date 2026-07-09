@@ -24,7 +24,7 @@ def load_samples(csv_path: Path):
 
 def main():
     script_dir = Path(__file__).resolve().parent
-    csv_path = script_dir / "samples.csv"
+    csv_path = script_dir / "samples2.csv"
 
     if not csv_path.exists():
         raise FileNotFoundError(

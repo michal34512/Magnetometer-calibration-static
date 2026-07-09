@@ -1,5 +1,4 @@
 #include "vector.h"
-#include "rotation.h"
 
 void vec_rotate_x(vector3_t *vec, mag_real_t angle) {
     mag_real_t y = vec->y;

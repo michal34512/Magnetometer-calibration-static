@@ -1,9 +1,9 @@
-#define _USE_MATH_DEFINES
-#include "geometry.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+
+#include "magcalib.h"
 
 #define MIN_GAIN   0.5f
 #define MAX_GAIN   10
@@ -35,23 +35,25 @@ void generate_mag_data(int n) {
         generated[i].z = ((float)rand() / (float)RAND_MAX) * 2 - 1;
         vec_normalize(&generated[i]);
 
-        // Apply ellipsoid transformation (rotation, scaling, offset)
-        vec_rotate_xyz(&generated[i], angleX, angleY, angleZ);
-        generated[i].x *= gainX;
-        generated[i].y *= gainY;
-        generated[i].z *= gainZ;
-        generated[i].x += offsetX;
-        generated[i].y += offsetY;
-        generated[i].z += offsetZ;
-
         // Add noise
         float scalar = (((float)rand() / (float)RAND_MAX) * 2 - 1) * MAX_NOISE + 1;
         vec_mul_scalar(&generated[i], scalar);
+
+        // Apply ellipsoid transformation (rotation, scaling, offset)
+        generated[i].x *= gainX;
+        generated[i].y *= gainY;
+        generated[i].z *= gainZ;
+
+        vec_rotate_xyz(&generated[i], angleX, angleY, angleZ);
+
+        generated[i].x += offsetX;
+        generated[i].y += offsetY;
+        generated[i].z += offsetZ;
     }
 }
 
 int main() {
-    srand(time(NULL));
+    srand(42);
 
     // Simulate random magnetometer data
     generate_mag_data(DATA_LEN);
@@ -66,6 +68,12 @@ int main() {
     }
 
     // Callibration
+    calibration_object_t calib_obj = {0};
+    calibration_result_data_t calib_res;
+    for (uint16_t i = 0; i < DATA_LEN; i++) {
+        calib_capture_vec(&calib_obj, &generated[i]);
+    }
+    calib_calibrate(&calib_res, &calib_obj);
 
     fclose(out);
     return 0;

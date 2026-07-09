@@ -7,15 +7,6 @@
 #include "eig.h"
 #include "magcalib.h"
 #include "matrix.h"
-#include "vector.h"
-
-#ifndef M_PI
-  #define M_PI 3.14159265358979323846
-#endif
-
-#define EIGEN_TOLERANCE             1.0E-6
-#define EIGEN_SINGULARITY_TOLERANCE 1.0E-10
-#define EIGEN_MAX_ITER              100
 
 static inline void mat_mul_6(matrix6_t *mat, matrix6_t *q, matrix6_t *r) {
     for (uint8_t i = 0; i < 6; i++) {
@@ -192,80 +183,6 @@ static eigen_result_t eig_solve_eigenvectors_6(matrix6_t *matA, eigen6_t *eigen)
     return EIGEN_SUCCESS;
 }
 
-void eig_fast_eigenvalues_3x3(matrix3_t *matA, eigen3_t *eigen) {
-    const mag_real_t a00 = matA->m[0][0];
-    const mag_real_t a01 = matA->m[0][1];
-    const mag_real_t a02 = matA->m[0][2];
-    const mag_real_t a11 = matA->m[1][1];
-    const mag_real_t a12 = matA->m[1][2];
-    const mag_real_t a22 = matA->m[2][2];
-    mag_real_t p1        = a01 * a01 + a02 * a02 + a12 * a12;
-
-    if (p1 == 0.0) {
-        eigen->eigenvalues[0] = a00;
-        eigen->eigenvalues[1] = a11;
-        eigen->eigenvalues[2] = a22;
-        return;
-    }
-    const mag_real_t q   = (a00 + a11 + a22) / 3.0;
-    const mag_real_t b00 = a00 - q;
-    const mag_real_t b11 = a11 - q;
-    const mag_real_t b22 = a22 - q;
-    const mag_real_t p2  = b00 * b00 + b11 * b11 + b22 * b22 + 2.0 * p1;
-    const mag_real_t p   = sqrt(p2 / 6.0);
-    const mag_real_t detB
-      = b00 * (b11 * b22 - a12 * a12) - a01 * (a01 * b22 - a02 * a12) + a02 * (a01 * a12 - b11 * a02);
-    mag_real_t r = detB / (2.0 * p * p * p);
-    if (r <= -1.0)
-        r = -1.0;
-    if (r >= 1.0)
-        r = 1.0;
-    const mag_real_t phi  = acos(r) / 3.0;
-    const mag_real_t eig1 = q + 2.0 * p * cos(phi);
-    const mag_real_t eig2 = q + 2.0 * p * cos(phi + (2.0 * M_PI / 3.0));
-    const mag_real_t eig3 = q + 2.0 * p * cos(phi + (4.0 * M_PI / 3.0));
-    eigen->eigenvalues[0] = eig1;
-    eigen->eigenvalues[1] = eig2;
-    eigen->eigenvalues[2] = eig3;
-}
-
-void eig_fast_eigenvectors3(matrix3_t *matA, eigen3_t *eigen) {
-    for (uint8_t i = 0; i < 3; i++) {
-        const mag_real_t lambda = eigen->eigenvalues[i];
-        const mag_real_t r0[3]  = {MAT_ELEM(matA, 0, 0) - lambda, MAT_ELEM(matA, 0, 1), MAT_ELEM(matA, 0, 2)};
-        const mag_real_t r1[3]  = {MAT_ELEM(matA, 1, 0), MAT_ELEM(matA, 1, 1) - lambda, MAT_ELEM(matA, 1, 2)};
-        const mag_real_t r2[3]  = {MAT_ELEM(matA, 2, 0), MAT_ELEM(matA, 2, 1), MAT_ELEM(matA, 2, 2) - lambda};
-
-        const mag_real_t v0[3]
-          = {r0[1] * r1[2] - r0[2] * r1[1], r0[2] * r1[0] - r0[0] * r1[2], r0[0] * r1[1] - r0[1] * r1[0]};  // r0 x r1
-        const mag_real_t v1[3]
-          = {r1[1] * r2[2] - r1[2] * r2[1], r1[2] * r2[0] - r1[0] * r2[2], r1[0] * r2[1] - r1[1] * r2[0]};  // r1 x r2
-        const mag_real_t v2[3]
-          = {r2[1] * r0[2] - r2[2] * r0[1], r2[2] * r0[0] - r2[0] * r2[2], r2[0] * r0[1] - r2[1] * r0[0]};  // r2 x r0
-
-        const mag_real_t mag0 = v0[0] * v0[0] + v0[1] * v0[1] + v0[2] * v0[2];
-        const mag_real_t mag1 = v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2];
-        const mag_real_t mag2 = v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2];
-
-        const mag_real_t *best_v = v0;
-        mag_real_t max_mag       = mag0;
-
-        if (mag1 > max_mag) {
-            best_v  = v1;
-            max_mag = mag1;
-        }
-        if (mag2 > max_mag) {
-            best_v  = v2;
-            max_mag = mag2;
-        }
-
-        mag_real_t inv_mag       = 1.0 / sqrt(max_mag);
-        eigen->eigenvectors[i].x = best_v[0] * inv_mag;
-        eigen->eigenvectors[i].y = best_v[1] * inv_mag;
-        eigen->eigenvectors[i].z = best_v[2] * inv_mag
-    }
-}
-
 eigen_result_t eig_solve_6(matrix6_t *matA, eigen6_t *eigen) {
     assert(matA != NULL);
     assert(eigen != NULL);
@@ -281,80 +198,7 @@ eigen_result_t eig_solve_6(matrix6_t *matA, eigen6_t *eigen) {
     return res;
 }
 
-static bool eig_fast_eigenvalues_3x3(const matrix3_t *matA, eigen3_t *eigen) {
-    const mag_real_t a00 = matA->m[0][0];
-    const mag_real_t a01 = matA->m[0][1];
-    const mag_real_t a02 = matA->m[0][2];
-    const mag_real_t a11 = matA->m[1][1];
-    const mag_real_t a12 = matA->m[1][2];
-    const mag_real_t a22 = matA->m[2][2];
-    mag_real_t p1        = a01 * a01 + a02 * a02 + a12 * a12;
-
-    if (fabs(p1) < EIGEN_SINGULARITY_TOLERANCE) {
-        eigen->eigenvalues[0] = a00;
-        eigen->eigenvalues[1] = a11;
-        eigen->eigenvalues[2] = a22;
-        return;
-    }
-    const mag_real_t q   = (a00 + a11 + a22) / 3.0;
-    const mag_real_t b00 = a00 - q;
-    const mag_real_t b11 = a11 - q;
-    const mag_real_t b22 = a22 - q;
-    const mag_real_t p2  = b00 * b00 + b11 * b11 + b22 * b22 + 2.0 * p1;
-    const mag_real_t p   = sqrt(p2 / 6.0);
-    const mag_real_t detB
-      = b00 * (b11 * b22 - a12 * a12) - a01 * (a01 * b22 - a02 * a12) + a02 * (a01 * a12 - b11 * a02);
-    mag_real_t r = detB / (2.0 * p * p * p);
-    if (r <= -1.0)
-        r = -1.0;
-    if (r >= 1.0)
-        r = 1.0;
-    const mag_real_t phi  = acos(r) / 3.0;
-    const mag_real_t eig1 = q + 2.0 * p * cos(phi);
-    const mag_real_t eig2 = q + 2.0 * p * cos(phi + (2.0 * M_PI / 3.0));
-    const mag_real_t eig3 = q + 2.0 * p * cos(phi + (4.0 * M_PI / 3.0));
-    eigen->eigenvalues[0] = eig1;
-    eigen->eigenvalues[1] = eig2;
-    eigen->eigenvalues[2] = eig3;
-}
-
-void eig_fast_eigenvectors3(matrix3_t *matA, eigen3_t *eigen) {
-    for (uint8_t i = 0; i < 3; i++) {
-        const mag_real_t lambda = eigen->eigenvalues[i];
-        const mag_real_t r0[3]  = {MAT_ELEM(matA, 0, 0) - lambda, MAT_ELEM(matA, 0, 1), MAT_ELEM(matA, 0, 2)};
-        const mag_real_t r1[3]  = {MAT_ELEM(matA, 1, 0), MAT_ELEM(matA, 1, 1) - lambda, MAT_ELEM(matA, 1, 2)};
-        const mag_real_t r2[3]  = {MAT_ELEM(matA, 2, 0), MAT_ELEM(matA, 2, 1), MAT_ELEM(matA, 2, 2) - lambda};
-
-        const mag_real_t v0[3]
-          = {r0[1] * r1[2] - r0[2] * r1[1], r0[2] * r1[0] - r0[0] * r1[2], r0[0] * r1[1] - r0[1] * r1[0]};  // r0 x r1
-        const mag_real_t v1[3]
-          = {r1[1] * r2[2] - r1[2] * r2[1], r1[2] * r2[0] - r1[0] * r2[2], r1[0] * r2[1] - r1[1] * r2[0]};  // r1 x r2
-        const mag_real_t v2[3]
-          = {r2[1] * r0[2] - r2[2] * r0[1], r2[2] * r0[0] - r2[0] * r2[2], r2[0] * r0[1] - r2[1] * r0[0]};  // r2 x r0
-
-        const mag_real_t mag0 = v0[0] * v0[0] + v0[1] * v0[1] + v0[2] * v0[2];
-        const mag_real_t mag1 = v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2];
-        const mag_real_t mag2 = v2[0] * v2[0] + v2[1] * v2[1] + v2[2] * v2[2];
-
-        const mag_real_t *best_v = v0;
-        mag_real_t max_mag       = mag0;
-
-        if (mag1 > max_mag) {
-            best_v  = v1;
-            max_mag = mag1;
-        }
-        if (mag2 > max_mag) {
-            best_v  = v2;
-            max_mag = mag2;
-        }
-
-        mag_real_t inv_mag       = 1.0 / sqrt(max_mag);
-        eigen->eigenvectors[i].x = best_v[0] * inv_mag;
-        eigen->eigenvectors[i].y = best_v[1] * inv_mag;
-        eigen->eigenvectors[i].z = best_v[2] * inv_mag;
-    }
-}
-void eig_fast_eigenvalues_3x3(matrix3_t *matA, eigen3_t *eigen) {
+void eig_fast_eigenvalues_3(matrix3_t *matA, eigen3_t *eigen) {
     const mag_real_t a00 = matA->m[0][0];
     const mag_real_t a01 = matA->m[0][1];
     const mag_real_t a02 = matA->m[0][2];
@@ -391,12 +235,12 @@ void eig_fast_eigenvalues_3x3(matrix3_t *matA, eigen3_t *eigen) {
     eigen->eigenvalues[2] = eig3;
 }
 
-void eig_fast_eigenvectors3(matrix3_t *matA, eigen3_t *eigen) {
+void eig_fast_eigenvectors_3(matrix3_t *matA, eigen3_t *eigen) {
     for (uint8_t i = 0; i < 3; i++) {
         const mag_real_t lambda = eigen->eigenvalues[i];
-        const mag_real_t r0[3]  = {MAT_ELEM(matA, 0, 0) - lambda, MAT_ELEM(matA, 0, 1), MAT_ELEM(matA, 0, 2)};
-        const mag_real_t r1[3]  = {MAT_ELEM(matA, 1, 0), MAT_ELEM(matA, 1, 1) - lambda, MAT_ELEM(matA, 1, 2)};
-        const mag_real_t r2[3]  = {MAT_ELEM(matA, 2, 0), MAT_ELEM(matA, 2, 1), MAT_ELEM(matA, 2, 2) - lambda};
+        const mag_real_t r0[3]  = {matA->m[0][0] - lambda, matA->m[0][1], matA->m[0][2]};
+        const mag_real_t r1[3]  = {matA->m[1][0], matA->m[1][1] - lambda, matA->m[1][2]};
+        const mag_real_t r2[3]  = {matA->m[2][0], matA->m[2][1], matA->m[2][2] - lambda};
 
         const mag_real_t v0[3]
           = {r0[1] * r1[2] - r0[2] * r1[1], r0[2] * r1[0] - r0[0] * r1[2], r0[0] * r1[1] - r0[1] * r1[0]};  // r0 x r1
@@ -431,7 +275,7 @@ void eig_fast_eigenvectors3(matrix3_t *matA, eigen3_t *eigen) {
 eigen_result_t eig_solve_3(matrix3_t *matA, eigen3_t *eigen) {
     assert(matA != NULL);
     assert(eigen != NULL);
-    eig_fast_eigenvalues_3x3(matA, eigen);
-    eig_fast_eigenvectors_3x3(matA, eigen);
+    eig_fast_eigenvalues_3(matA, eigen);
+    eig_fast_eigenvectors_3(matA, eigen);
     return EIGEN_SUCCESS;
 }

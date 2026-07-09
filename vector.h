@@ -1,7 +1,7 @@
 #ifndef VECTOR_H
 #define VECTOR_H
 
-#include "magcalib.h"
+#include "magcalib_defs.h"
 
 typedef struct {
     mag_real_t x;

@@ -10,6 +10,7 @@ add_executable(mag_callib_static
     vector.c
     calibration.c
     matrix.c
+    eig.c
 )
 
 if(MSVC)

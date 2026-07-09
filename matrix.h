@@ -1,8 +1,9 @@
 #ifndef MATRIX_H
 #define MATRIX_H
 
-#include "magcalib.h"
 #include <stdbool.h>
+
+#include "magcalib_defs.h"
 
 typedef struct {
     mag_real_t m[3][3];
@@ -25,5 +26,10 @@ typedef struct {
 } matrix10_t;
 
 bool mat_inv_4x4(matrix4_t *mat, matrix4_t *mat_out);
+
+void mat_print_3(matrix3_t *mat);
+void mat_print_4(matrix4_t *mat);
+void mat_print_6x4(matrix6x4_t *mat);
+void mat_print_6(matrix6_t *mat);
 
 #endif  // MATRIX_H

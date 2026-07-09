@@ -1,6 +1,7 @@
 #ifndef MAGCALIB_H
 #define MAGCALIB_H
 
-typedef float mag_real_t;
+#include "calibration.h"
+#include "vector.h"
 
 #endif  // MAGCALIB_H
