@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <math.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -190,12 +191,32 @@ eigen_result_t eig_solve_6(matrix6_t *matA, eigen6_t *eigen) {
     eigen->largest_eigenvalue_index = -1;
 
     res = eig_solve_eigenvalues_6(matA, eigen);
-    if (res != EIGEN_SUCCESS) {
+
+    if (res != EIGEN_SUCCESS && res != EIGEN_MAX_ITERATION) {
         return res;
     }
 
     res = eig_solve_eigenvectors_6(matA, eigen);
     return res;
+}
+
+static inline void sort3_desc(mag_real_t *a, mag_real_t *b, mag_real_t *c) {
+    mag_real_t t;
+    if (*a < *b) {
+        t  = *a;
+        *a = *b;
+        *b = t;
+    }
+    if (*a < *c) {
+        t  = *a;
+        *a = *c;
+        *c = t;
+    }
+    if (*b < *c) {
+        t  = *b;
+        *b = *c;
+        *c = t;
+    }
 }
 
 void eig_fast_eigenvalues_3(matrix3_t *matA, eigen3_t *eigen) {
@@ -211,6 +232,7 @@ void eig_fast_eigenvalues_3(matrix3_t *matA, eigen3_t *eigen) {
         eigen->eigenvalues[0] = a00;
         eigen->eigenvalues[1] = a11;
         eigen->eigenvalues[2] = a22;
+        sort3_desc(&eigen->eigenvalues[0], &eigen->eigenvalues[1], &eigen->eigenvalues[2]);
         return;
     }
     const mag_real_t q   = (a00 + a11 + a22) / 3.0;
@@ -226,10 +248,12 @@ void eig_fast_eigenvalues_3(matrix3_t *matA, eigen3_t *eigen) {
         r = -1.0;
     if (r >= 1.0)
         r = 1.0;
-    const mag_real_t phi  = acos(r) / 3.0;
-    const mag_real_t eig1 = q + 2.0 * p * cos(phi);
-    const mag_real_t eig2 = q + 2.0 * p * cos(phi + (2.0 * M_PI / 3.0));
-    const mag_real_t eig3 = q + 2.0 * p * cos(phi + (4.0 * M_PI / 3.0));
+    const mag_real_t phi = acos(r) / 3.0;
+    mag_real_t eig1      = q + 2.0 * p * cos(phi);
+    mag_real_t eig2      = q + 2.0 * p * cos(phi + (2.0 * M_PI / 3.0));
+    mag_real_t eig3      = q + 2.0 * p * cos(phi + (4.0 * M_PI / 3.0));
+
+    sort3_desc(&eig1, &eig2, &eig3);
     eigen->eigenvalues[0] = eig1;
     eigen->eigenvalues[1] = eig2;
     eigen->eigenvalues[2] = eig3;
@@ -238,16 +262,19 @@ void eig_fast_eigenvalues_3(matrix3_t *matA, eigen3_t *eigen) {
 void eig_fast_eigenvectors_3(matrix3_t *matA, eigen3_t *eigen) {
     for (uint8_t i = 0; i < 3; i++) {
         const mag_real_t lambda = eigen->eigenvalues[i];
-        const mag_real_t r0[3]  = {matA->m[0][0] - lambda, matA->m[0][1], matA->m[0][2]};
-        const mag_real_t r1[3]  = {matA->m[1][0], matA->m[1][1] - lambda, matA->m[1][2]};
-        const mag_real_t r2[3]  = {matA->m[2][0], matA->m[2][1], matA->m[2][2] - lambda};
+        if (eigen->largest_eigenvalue_index == -1 || lambda > eigen->eigenvalues[eigen->largest_eigenvalue_index]) {
+            eigen->largest_eigenvalue_index = i;
+        }
+        const mag_real_t r0[3] = {matA->m[0][0] - lambda, matA->m[0][1], matA->m[0][2]};
+        const mag_real_t r1[3] = {matA->m[1][0], matA->m[1][1] - lambda, matA->m[1][2]};
+        const mag_real_t r2[3] = {matA->m[2][0], matA->m[2][1], matA->m[2][2] - lambda};
 
         const mag_real_t v0[3]
           = {r0[1] * r1[2] - r0[2] * r1[1], r0[2] * r1[0] - r0[0] * r1[2], r0[0] * r1[1] - r0[1] * r1[0]};  // r0 x r1
         const mag_real_t v1[3]
           = {r1[1] * r2[2] - r1[2] * r2[1], r1[2] * r2[0] - r1[0] * r2[2], r1[0] * r2[1] - r1[1] * r2[0]};  // r1 x r2
         const mag_real_t v2[3]
-          = {r2[1] * r0[2] - r2[2] * r0[1], r2[2] * r0[0] - r2[0] * r2[2], r2[0] * r0[1] - r2[1] * r0[0]};  // r2 x r0
+          = {r2[1] * r0[2] - r2[2] * r0[1], r2[2] * r0[0] - r2[0] * r0[2], r2[0] * r0[1] - r2[1] * r0[0]};  // r2 x r0
 
         const mag_real_t mag0 = v0[0] * v0[0] + v0[1] * v0[1] + v0[2] * v0[2];
         const mag_real_t mag1 = v1[0] * v1[0] + v1[1] * v1[1] + v1[2] * v1[2];
@@ -265,17 +292,50 @@ void eig_fast_eigenvectors_3(matrix3_t *matA, eigen3_t *eigen) {
             max_mag = mag2;
         }
 
-        mag_real_t inv_mag       = 1.0 / sqrt(max_mag);
-        eigen->eigenvectors[i].x = best_v[0] * inv_mag;
-        eigen->eigenvectors[i].y = best_v[1] * inv_mag;
-        eigen->eigenvectors[i].z = best_v[2] * inv_mag;
+        mag_real_t inv_mag = 1.0 / sqrt(max_mag);
+        if (best_v[0] > 0) {
+            eigen->eigenvectors[i].v[0] = best_v[0] * inv_mag;
+            eigen->eigenvectors[i].v[1] = best_v[1] * inv_mag;
+            eigen->eigenvectors[i].v[2] = best_v[2] * inv_mag;
+        } else {
+            eigen->eigenvectors[i].v[0] = -best_v[0] * inv_mag;
+            eigen->eigenvectors[i].v[1] = -best_v[1] * inv_mag;
+            eigen->eigenvectors[i].v[2] = -best_v[2] * inv_mag;
+        }
     }
 }
 
 eigen_result_t eig_solve_3(matrix3_t *matA, eigen3_t *eigen) {
     assert(matA != NULL);
     assert(eigen != NULL);
+    eigen->largest_eigenvalue_index = -1;
     eig_fast_eigenvalues_3(matA, eigen);
     eig_fast_eigenvectors_3(matA, eigen);
     return EIGEN_SUCCESS;
+}
+
+void eig_orthogonalize_3(eigen3_t *eigen) {
+    assert(eigen != NULL);
+    // Modified Gram–Schmidt (MGS) orthogonalize eigenvectors for better results
+    // For best result start with vector with largest eigenvalue
+    switch (eigen->largest_eigenvalue_index) {
+    case 0:
+        vec_ortogonalize_onto(&eigen->eigenvectors[1], &eigen->eigenvectors[0]);
+        vec_ortogonalize_onto(&eigen->eigenvectors[2], &eigen->eigenvectors[0]);
+        vec_ortogonalize_onto(&eigen->eigenvectors[1], &eigen->eigenvectors[2]);
+        break;
+    case 1:
+        vec_ortogonalize_onto(&eigen->eigenvectors[0], &eigen->eigenvectors[1]);
+        vec_ortogonalize_onto(&eigen->eigenvectors[2], &eigen->eigenvectors[1]);
+        vec_ortogonalize_onto(&eigen->eigenvectors[0], &eigen->eigenvectors[2]);
+        break;
+    case 2:
+        vec_ortogonalize_onto(&eigen->eigenvectors[0], &eigen->eigenvectors[2]);
+        vec_ortogonalize_onto(&eigen->eigenvectors[1], &eigen->eigenvectors[2]);
+        vec_ortogonalize_onto(&eigen->eigenvectors[0], &eigen->eigenvectors[1]);
+        break;
+    }
+    // eigenvector 0 does not need normalization as it is already normalized
+    vec_normalize(&eigen->eigenvectors[1]);
+    vec_normalize(&eigen->eigenvectors[2]);
 }

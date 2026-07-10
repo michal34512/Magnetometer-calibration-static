@@ -4,6 +4,43 @@
 #include "magcalib_defs.h"
 #include "matrix.h"
 
+bool mat_inv_3x3(matrix3_t *mat) {
+    const mag_real_t a = mat->m[0][0];
+    const mag_real_t b = mat->m[0][1];
+    const mag_real_t c = mat->m[0][2];
+    const mag_real_t d = mat->m[1][0];
+    const mag_real_t e = mat->m[1][1];
+    const mag_real_t f = mat->m[1][2];
+    const mag_real_t g = mat->m[2][0];
+    const mag_real_t h = mat->m[2][1];
+    const mag_real_t i = mat->m[2][2];
+
+    const mag_real_t det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
+    if (det == 0.0f) {
+        return false;
+    }
+
+    matrix3_t inv;
+    inv.m[0][0] = (e * i - f * h);
+    inv.m[0][1] = (c * h - b * i);
+    inv.m[0][2] = (b * f - c * e);
+    inv.m[1][0] = (f * g - d * i);
+    inv.m[1][1] = (a * i - c * g);
+    inv.m[1][2] = (c * d - a * f);
+    inv.m[2][0] = (d * h - e * g);
+    inv.m[2][1] = (b * g - a * h);
+    inv.m[2][2] = (a * e - b * d);
+
+    const mag_real_t inv_det = 1.0f / det;
+    for (uint8_t r = 0; r < 3; r++) {
+        for (uint8_t c2 = 0; c2 < 3; c2++) {
+            mat->m[r][c2] = inv.m[r][c2] * inv_det;
+        }
+    }
+
+    return true;
+}
+
 bool mat_inv_4x4(matrix4_t *mat, matrix4_t *mat_out) {
     mag_real_t inv[16];
     mag_real_t m[16];

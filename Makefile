@@ -13,7 +13,7 @@ endif
 
 .PHONY: all configure build clean run
 
-all: build
+all: build run
 
 configure:
 	$(CMAKE) -S . -B $(BUILD_DIR) $(CONFIGURE_ARGS)
@@ -24,5 +24,5 @@ build: configure
 clean:
 	rm -rf $(BUILD_DIR)
 
-run: build
+run:
 	$(APP)

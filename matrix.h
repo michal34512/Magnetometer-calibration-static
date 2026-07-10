@@ -25,6 +25,7 @@ typedef struct {
     mag_real_t m[10][10];
 } matrix10_t;
 
+bool mat_inv_3x3(matrix3_t *mat);
 bool mat_inv_4x4(matrix4_t *mat, matrix4_t *mat_out);
 
 void mat_print_3(matrix3_t *mat);
