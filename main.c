@@ -5,12 +5,12 @@
 
 #include "magcalib.h"
 
-#define MIN_GAIN   0.5f
-#define MAX_GAIN   10
+#define MIN_GAIN   40
+#define MAX_GAIN   1
 #define MIN_OFFSET -10
 #define MAX_OFFSET 10
 #define MAX_NOISE  0.1f
-#define DATA_LEN   100
+#define DATA_LEN   1000
 
 vector3_t generated[DATA_LEN] = {0};
 
@@ -46,6 +46,56 @@ void generate_mag_data(int n) {
 
         vec_rotate_xyz(&generated[i], angleX, angleY, angleZ);
 
+        generated[i].v[0] += offsetX;
+        generated[i].v[1] += offsetY;
+        generated[i].v[2] += offsetZ;
+    }
+}
+
+void generate_mag_data_single_axis_rotation(int n) {
+    // Choose random rotation axis (0=X, 1=Y, 2=Z)
+    int axis = rand() % 3;
+
+    // Generate rotation angle around the chosen axis only
+    float angle = ((float)rand() / (float)RAND_MAX) * 2 * M_PI;
+
+    float gainX = ((float)rand() / (float)RAND_MAX) * (MAX_GAIN - MIN_GAIN) + MIN_GAIN;
+    float gainY = ((float)rand() / (float)RAND_MAX) * (MAX_GAIN - MIN_GAIN) + MIN_GAIN;
+    float gainZ = ((float)rand() / (float)RAND_MAX) * (MAX_GAIN - MIN_GAIN) + MIN_GAIN;
+
+    float offsetX = ((float)rand() / (float)RAND_MAX) * (MAX_OFFSET - MIN_OFFSET) + MIN_OFFSET;
+    float offsetY = ((float)rand() / (float)RAND_MAX) * (MAX_OFFSET - MIN_OFFSET) + MIN_OFFSET;
+    float offsetZ = ((float)rand() / (float)RAND_MAX) * (MAX_OFFSET - MIN_OFFSET) + MIN_OFFSET;
+
+    // Generate data
+    for (uint16_t i = 0; i < n; i++) {
+        generated[i].v[0] = ((float)rand() / (float)RAND_MAX) * 2 - 1;
+        generated[i].v[1] = ((float)rand() / (float)RAND_MAX) * 2 - 1;
+        generated[i].v[2] = ((float)rand() / (float)RAND_MAX) * 2 - 1;
+        vec_normalize(&generated[i]);
+
+        // Add noise
+        float scalar = (((float)rand() / (float)RAND_MAX) * 2 - 1) * MAX_NOISE + 1;
+        vec_mul_scalar(&generated[i], scalar);
+
+        // Apply scaling (gains) - creates ellipsoid shape
+        generated[i].v[0] *= gainX;
+        generated[i].v[1] *= gainY;
+        generated[i].v[2] *= gainZ;
+
+        // Apply rotation around single axis
+        if (axis == 0) {
+            // Rotation around X axis
+            vec_rotate_xyz(&generated[i], angle, 0, 0);
+        } else if (axis == 1) {
+            // Rotation around Y axis
+            vec_rotate_xyz(&generated[i], 0, angle, 0);
+        } else {
+            // Rotation around Z axis
+            vec_rotate_xyz(&generated[i], 0, 0, angle);
+        }
+
+        // Apply offset
         generated[i].v[0] += offsetX;
         generated[i].v[1] += offsetY;
         generated[i].v[2] += offsetZ;

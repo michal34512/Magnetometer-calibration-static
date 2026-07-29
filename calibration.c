@@ -8,7 +8,7 @@
 #include "eig.h"
 #include "magcalib.h"
 
-#define ALPHA 16
+#define ALPHA 4
 
 typedef struct {
     matrix3_t m;

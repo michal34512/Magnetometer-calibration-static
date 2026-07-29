@@ -21,4 +21,6 @@ void vec_ortogonalize_onto(vector3_t *vec_a, vector3_t *vec_b);
 
 void vec_print_3(vector3_t *vec_a);
 
+void vec_print_6(vector6_t *vec_a);
+
 #endif  // VECTOR_H

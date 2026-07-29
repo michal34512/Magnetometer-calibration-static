@@ -70,3 +70,14 @@ void vec_print_3(vector3_t *vec_a) {
     assert(vec_a != NULL);
     printf("Vector 3: [%.6f, %.6f, %.6f]\n", vec_a->v[0], vec_a->v[1], vec_a->v[2]);
 }
+
+void vec_print_6(vector6_t *vec_a) {
+    assert(vec_a != NULL);
+    printf("Vector 6: [%.6f, %.6f, %.6f, %.6f, %.6f, %.6f]\n",
+           vec_a->v[0],
+           vec_a->v[1],
+           vec_a->v[2],
+           vec_a->v[3],
+           vec_a->v[4],
+           vec_a->v[5]);
+}

@@ -1,0 +1,2 @@
+Fix zero noise instability
+- When the noise is zero, transformation matrix is NaN
